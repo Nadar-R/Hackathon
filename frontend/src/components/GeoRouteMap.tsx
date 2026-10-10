@@ -55,7 +55,86 @@ export const GeoRouteMap: React.FC<GeoRouteMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layersRef = useRef<{ markers: L.LayerGroup; polylines: L.LayerGroup } | null>(null);
+  const pinMarkerRef = useRef<L.Marker | null>(null);
   const [roadCalibratedCount, setRoadCalibratedCount] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [notFound, setNotFound] = useState<boolean>(false);
+
+  const dropPin = (lat: number, lon: number, placeName?: string | null) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (pinMarkerRef.current) {
+      pinMarkerRef.current.remove();
+      pinMarkerRef.current = null;
+    }
+
+    const pinIcon = L.divIcon({
+      html: '<div style="font-size: 24px; line-height: 1; text-align: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); cursor: pointer;">📍</div>',
+      className: 'custom-pin-marker',
+      iconSize: [24, 24],
+      iconAnchor: [12, 22],
+      popupAnchor: [0, -20],
+    });
+
+    const popupHtml = `
+      <div style="font-family: inherit; color: #1e293b; padding: 2px; font-size: 13px; max-width: 240px;">
+        ${placeName ? `<div style="font-weight: 700; color: #0f172a; margin-bottom: 4px; line-height: 1.3;">${placeName}</div>` : `<div style="font-weight: 700; color: #0f172a; margin-bottom: 4px;">Pinned Location</div>`}
+        <div style="font-size: 12px; color: #0f172a;">
+          ${lat.toFixed(5)}, ${lon.toFixed(5)}
+        </div>
+        <div style="font-size: 11px; color: #0284c7; font-family: monospace; margin-top: 2px;">
+          GPS: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E
+        </div>
+      </div>
+    `;
+
+    const marker = L.marker([lat, lon], { icon: pinIcon })
+      .addTo(map)
+      .bindPopup(popupHtml)
+      .openPopup();
+
+    pinMarkerRef.current = marker;
+  };
+
+  const dropPinRef = useRef(dropPin);
+  dropPinRef.current = dropPin;
+
+  const handleSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+
+    setIsSearching(true);
+    setNotFound(false);
+
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+      if (!res.ok) {
+        setNotFound(true);
+        return;
+      }
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        setNotFound(true);
+        return;
+      }
+
+      const item = data[0];
+      const lat = parseFloat(item.lat);
+      const lon = parseFloat(item.lon);
+      const placeName = item.display_name;
+
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.flyTo([lat, lon], 12);
+      }
+      dropPin(lat, lon, placeName);
+    } catch {
+      setNotFound(true);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -85,6 +164,12 @@ export const GeoRouteMap: React.FC<GeoRouteMapProps> = ({
         markers: markersGroup,
         polylines: polylinesGroup,
       };
+
+      map.on('click', (e: L.LeafletMouseEvent) => {
+        if (dropPinRef.current) {
+          dropPinRef.current(e.latlng.lat, e.latlng.lng, null);
+        }
+      });
 
       mapInstanceRef.current = map;
     }
@@ -365,6 +450,76 @@ export const GeoRouteMap: React.FC<GeoRouteMapProps> = ({
         }}>
           <CheckCircle size={10} /> OSRM Engine ({roadCalibratedCount} Routes)
         </span>
+      </div>
+
+      {/* Search Bar over Map */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '52px',
+          left: '12px',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          background: 'rgba(15, 23, 42, 0.92)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          borderRadius: '8px',
+          padding: '4px 6px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        <input
+          type="text"
+          placeholder="Search location..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            if (notFound) setNotFound(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSearch();
+            }
+          }}
+          style={{
+            background: 'rgba(30, 41, 59, 0.8)',
+            border: '1px solid rgba(148, 163, 184, 0.3)',
+            borderRadius: '6px',
+            color: '#f8fafc',
+            fontSize: '12px',
+            padding: '5px 8px',
+            outline: 'none',
+            width: '180px',
+          }}
+        />
+        <button
+          type="button"
+          onClick={handleSearch}
+          disabled={isSearching}
+          style={{
+            background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '5px 12px',
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          {isSearching ? '...' : 'Go'}
+        </button>
+        {notFound && (
+          <span style={{ color: '#f87171', fontSize: '11px', fontWeight: 600, padding: '0 4px' }}>
+            Not found
+          </span>
+        )}
       </div>
 
       {/* Edit Facilities Button on Map */}
