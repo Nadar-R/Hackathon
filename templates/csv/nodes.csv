@@ -1,0 +1,4 @@
+id,name,node_type,criticality,location_text,region_code,is_active,source_status,notes
+port-jnpt-terminal,JNPT Gateway Terminal,terminal,critical,Nhava Sheva,IN-MH,true,confirmed_public,Primary Western India container terminal
+digital-tos-booking,TOS Booking Gateway,digital_service,critical,Navi Mumbai,IN-MH,true,synthetic,EDI gate clearance and container management
+wh-mumbai-central,Bhiwandi Pharma DC,warehouse,high,Bhiwandi,IN-MH,true,synthetic,Central distribution warehouse

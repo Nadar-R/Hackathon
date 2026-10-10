@@ -1,0 +1,2 @@
+node_id,product_id,units_per_day,active_from_day,active_to_day,notes
+wh-mumbai-central,prod-med1,900,1,30,Daily downstream hospital dispatch requirement

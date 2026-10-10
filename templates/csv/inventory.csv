@@ -1,0 +1,2 @@
+node_id,product_id,on_hand_units,storage_capacity_units,as_of_day
+wh-mumbai-central,prod-med1,5000,15000,1

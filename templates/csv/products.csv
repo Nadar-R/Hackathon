@@ -1,0 +1,3 @@
+id,sku,name,unit_name,is_critical,notes
+prod-med1,MED-CRIT-01,Ceftriaxone IV Antibiotic,cartons,true,ICU and acute sepsis medicine
+prod-insulin,MED-INS-02,Insulin Glargine,vials,false,Daily glycemic therapy

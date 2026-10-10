@@ -1,0 +1,2 @@
+id,service_node_id,dependent_node_id,dependency_type,failure_mode,remaining_capacity_factor,source_status,notes
+dep-booking-jnpt,digital-tos-booking,port-jnpt-terminal,critical_tos,gate_clearance_paralysis,0.33,confirmed_public,Booking failure reduces terminal throughput to 33%

@@ -1,0 +1,2 @@
+id,name,event_type,target_node_id,status,start_day,duration_days,remaining_capacity_factor,source_title,source_url,source_excerpt,confirmed_by_user,assumptions_note
+scen-1,Maersk JNPT TOS Outage,booking_outage,port-jnpt-terminal,hypothetical,1,10,0.33,UNCTAD Case Study 16,https://resilientmaritimelogistics.unctad.org/es/node/311,Terminal stalled,true,Synthetic 300/day throughput for 10 days

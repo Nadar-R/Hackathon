@@ -1,0 +1,2 @@
+id,origin_node_id,destination_node_id,product_id,max_units_per_day,transit_days,priority,baseline_enabled,is_alternate,cost_per_unit,notes
+link-jnpt-hub,port-jnpt-terminal,wh-mumbai-central,prod-med1,900,1,1,true,false,8.0,Direct container corridor

@@ -1,0 +1,2 @@
+node_id,product_id,units_per_day,active_from_day,active_to_day,notes
+port-jnpt-terminal,prod-med1,900,1,30,Normal port container offloading
