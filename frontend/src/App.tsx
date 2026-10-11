@@ -25,6 +25,7 @@ import { SiemTelemetryModal } from './components/SiemTelemetryModal';
 import { DaaLossMatrixCard } from './components/DaaLossMatrixCard';
 import { FacilityEditorModal } from './components/FacilityEditorModal';
 import { IssueReporterPanel } from './components/IssueReporterPanel';
+import type { ReportedIssue } from './components/IssueReporterPanel';
 import {
   Activity,
   MapPin,
@@ -74,6 +75,10 @@ export const App: React.FC = () => {
   const [daaData, setDaaData] = useState<any | null>(null);
   const [isSiemModalOpen, setIsSiemModalOpen] = useState<boolean>(false);
   const [activeAttackScenario, setActiveAttackScenario] = useState<string>('normal');
+
+  // Shared issues state for IssueReporterPanel — also driven by SIEM actions
+  const SIEM_ISSUE_ID = 'siem-ransomware-porta';
+  const [issues, setIssues] = useState<ReportedIssue[]>([]);
 
   // Simulation & Comparison State
   const [simResult, setSimResult] = useState<SimulationResult | null>(null);
@@ -246,6 +251,23 @@ export const App: React.FC = () => {
     const isUnderAttack = scenarioType !== 'normal';
     const newPortAState = !isUnderAttack;
     setPortAActive(newPortAState);
+
+    // Inject or remove the SIEM ransomware disruption issue for node-port-a
+    setIssues((prev) => {
+      const withoutSiem = prev.filter((i) => i.id !== SIEM_ISSUE_ID);
+      if (isUnderAttack) {
+        const siemIssue: ReportedIssue = {
+          id: SIEM_ISSUE_ID,
+          type: 'Node',
+          targetId: 'node-port-a',
+          targetName: 'Nhava Sheva Gateway (Port A)',
+          daysClosed: 5,
+          reason: 'Ransomware detected by SIEM',
+        };
+        return [...withoutSiem, siemIssue];
+      }
+      return withoutSiem;
+    });
 
     await fetchDaaRoutes(newPortAState, portBActive);
 
@@ -666,6 +688,8 @@ export const App: React.FC = () => {
             portBActive={portBActive}
             initialAlternateRoute={daaData?.alternate_route}
             initialPrimaryRoute={daaData?.primary_route}
+            issues={issues}
+            onIssuesChange={setIssues}
             onRouteEvaluated={(evaluatedData) => {
               setDaaData((prev: any) => ({
                 ...prev,

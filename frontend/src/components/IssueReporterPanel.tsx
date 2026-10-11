@@ -64,6 +64,9 @@ interface IssueReporterPanelProps {
   onRouteEvaluated?: (evaluationData: any) => void;
   initialAlternateRoute?: AlternateRouteInfo | null;
   initialPrimaryRoute?: PrimaryRouteInfo | null;
+  /** Controlled issues state from App.tsx (for SIEM integration) */
+  issues?: ReportedIssue[];
+  onIssuesChange?: (issues: ReportedIssue[]) => void;
 }
 
 const DEFAULT_FALLBACK_NODES: MapNodeItem[] = [
@@ -153,6 +156,8 @@ export const IssueReporterPanel: React.FC<IssueReporterPanelProps> = ({
   onRouteEvaluated,
   initialAlternateRoute: _initialAlternateRoute,
   initialPrimaryRoute,
+  issues: controlledIssues,
+  onIssuesChange,
 }) => {
   // Effective list of nodes and links
   const effectiveNodes = useMemo(() => {
@@ -171,8 +176,13 @@ export const IssueReporterPanel: React.FC<IssueReporterPanelProps> = ({
   const [daysClosed, setDaysClosed] = useState<number>(5);
   const [reason, setReason] = useState<string>('under construction');
 
-  // Active Issues State
-  const [activeIssues, setActiveIssues] = useState<ReportedIssue[]>([]);
+  // Active Issues State — controlled by parent if `issues` prop is provided
+  const [internalIssues, setInternalIssues] = useState<ReportedIssue[]>([]);
+  const activeIssues = controlledIssues !== undefined ? controlledIssues : internalIssues;
+  const setActiveIssues = (updated: ReportedIssue[]) => {
+    if (onIssuesChange) onIssuesChange(updated);
+    else setInternalIssues(updated);
+  };
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -300,6 +310,13 @@ export const IssueReporterPanel: React.FC<IssueReporterPanelProps> = ({
   useEffect(() => {
     evaluateWithDisruptions(activeIssues);
   }, []);
+
+  // Re-evaluate whenever the parent injects/removes issues externally (e.g., SIEM trigger)
+  useEffect(() => {
+    if (controlledIssues !== undefined) {
+      evaluateWithDisruptions(controlledIssues);
+    }
+  }, [controlledIssues]);
 
   // Current Alternate Route values read strictly from the latest evaluate-with-disruptions response
   const currentAltStatus = evalAlternateRoute?.status ?? 'STANDBY_RESERVE';
