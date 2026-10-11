@@ -3,6 +3,7 @@ from fastapi.responses import PlainTextResponse, HTMLResponse
 import subprocess
 import sys
 from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
 
 from backend.app.schemas.schemas import (
     DatasetSchema,
@@ -305,6 +306,25 @@ def get_daa_routes(
         port_b_active=port_b_active,
         demand_urgency_weight=urgency_weight,
         shortage_penalty_per_unit=shortage_penalty,
+    )
+
+
+class EvaluateWithDisruptionsRequest(BaseModel):
+    disabled_node_ids: List[str] = Field(default=[])
+    disabled_link_ids: List[str] = Field(default=[])
+    port_a_active: bool = True
+    port_b_active: bool = True
+
+
+@router.post("/routing/evaluate-with-disruptions")
+def evaluate_routes_with_disruptions(req: EvaluateWithDisruptionsRequest = EvaluateWithDisruptionsRequest()):
+    p_a = req.port_a_active if "node-port-a" not in req.disabled_node_ids else False
+    p_b = req.port_b_active if "node-port-b" not in req.disabled_node_ids else False
+    return daa_engine.evaluate_routes(
+        disabled_node_ids=req.disabled_node_ids,
+        disabled_link_ids=req.disabled_link_ids,
+        port_a_active=p_a,
+        port_b_active=p_b,
     )
 
 

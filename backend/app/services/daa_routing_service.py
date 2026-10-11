@@ -13,12 +13,17 @@ class DaaRoutingEngine:
         port_b_active: bool = True,
         demand_urgency_weight: float = 1.0,  # Multiplier for transit delay penalty
         shortage_penalty_per_unit: float = 150.0,
+        disabled_node_ids: Optional[List[str]] = None,
+        disabled_link_ids: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Runs DAA Dijkstra's shortest/cheapest path algorithm on the multi-echelon network.
         Evaluates primary vs alternative routes and computes the complete loss matrix.
         """
         nodes, links, deps, invs, supply, demand, incident, mitigations = get_custom_network_scenario()
+
+        disabled_nodes = set(disabled_node_ids or [])
+        disabled_links = set(disabled_link_ids or [])
 
         # Build NetworkX Directed Graph
         G = nx.DiGraph()
@@ -37,6 +42,12 @@ class DaaRoutingEngine:
         # Add edges with weighted costs:
         # Cost = Freight_Rate * Batch_Size + Toll + (Transit_Days * Urgency_Penalty)
         for link in links:
+            if (
+                link.id in disabled_links
+                or link.origin_node_id in disabled_nodes
+                or link.destination_node_id in disabled_nodes
+            ):
+                continue
             # Check if link is available given active port status
             is_enabled = True
             if link.origin_node_id == "node-port-a" and not port_a_active:
@@ -152,7 +163,9 @@ class DaaRoutingEngine:
         serialized_nodes = []
         for n in nodes:
             status = "normal"
-            if n.id == primary_source_id and not port_a_active:
+            if n.id in disabled_nodes:
+                status = "disrupted"
+            elif n.id == primary_source_id and not port_a_active:
                 status = "disrupted"
             elif n.id == alternate_source_id and not port_a_active and port_b_active:
                 status = "active_alternate"
@@ -173,17 +186,27 @@ class DaaRoutingEngine:
 
         serialized_links = []
         for link in links:
-            is_active_path = False
-            if link.origin_node_id == primary_source_id and port_a_active:
-                is_active_path = True
-            elif link.origin_node_id == alternate_source_id and not port_a_active and port_b_active:
-                is_active_path = True
-            elif link.origin_node_id == warehouse_id:
-                is_active_path = True
-
-            link_status = "active" if is_active_path else (
-                "disabled" if link.origin_node_id == primary_source_id and not port_a_active else "standby"
+            is_touching_disabled = (
+                link.id in disabled_links
+                or link.origin_node_id in disabled_nodes
+                or link.destination_node_id in disabled_nodes
             )
+
+            is_active_path = False
+            if not is_touching_disabled:
+                if link.origin_node_id == primary_source_id and primary_path_valid:
+                    is_active_path = True
+                elif link.origin_node_id == alternate_source_id and not primary_path_valid and alternate_path_valid:
+                    is_active_path = True
+                elif link.origin_node_id == warehouse_id:
+                    is_active_path = True
+
+            if is_touching_disabled:
+                link_status = "disabled"
+            else:
+                link_status = "active" if is_active_path else (
+                    "disabled" if link.origin_node_id == primary_source_id and not primary_path_valid else "standby"
+                )
 
             orig = node_map.get(link.origin_node_id)
             dest = node_map.get(link.destination_node_id)
@@ -224,7 +247,7 @@ class DaaRoutingEngine:
                 "distance_km": alternate_distance,
                 "toll_cost": alternate_tolls,
                 "lead_time_days": alternate_lead_time,
-                "status": "ACTIVE_RECOMMENDED" if not port_a_active and alternate_path_valid else "STANDBY_RESERVE",
+                "status": "ACTIVE_RECOMMENDED" if not primary_path_valid and alternate_path_valid else "STANDBY_RESERVE",
             },
             "distribution_routes": distribution_paths,
             "financial_loss_matrix": {

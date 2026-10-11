@@ -24,6 +24,7 @@ import { GeoRouteMap } from './components/GeoRouteMap';
 import { SiemTelemetryModal } from './components/SiemTelemetryModal';
 import { DaaLossMatrixCard } from './components/DaaLossMatrixCard';
 import { FacilityEditorModal } from './components/FacilityEditorModal';
+import { IssueReporterPanel } from './components/IssueReporterPanel';
 import {
   Activity,
   MapPin,
@@ -656,6 +657,23 @@ export const App: React.FC = () => {
               onOpenFacilityEditor={() => setShowFacilityEditor(true)}
             />
           </div>
+
+          {/* Report Issue Panel - Live Dijkstra Outage & Disruption Reporter */}
+          <IssueReporterPanel
+            nodes={daaData?.map_nodes || []}
+            links={daaData?.map_links || []}
+            portAActive={portAActive}
+            portBActive={portBActive}
+            initialAlternateRoute={daaData?.alternate_route}
+            initialPrimaryRoute={daaData?.primary_route}
+            onRouteEvaluated={(evaluatedData) => {
+              setDaaData((prev: any) => ({
+                ...prev,
+                ...evaluatedData,
+              }));
+              triggerUpdatePill();
+            }}
+          />
 
           {/* DAA Loss Matrix & Reroute Evaluation Card */}
           <DaaLossMatrixCard

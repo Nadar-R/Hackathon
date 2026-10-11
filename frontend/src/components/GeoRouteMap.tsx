@@ -263,10 +263,16 @@ export const GeoRouteMap: React.FC<GeoRouteMapProps> = ({
           opacity = 0.85;
           weight = 4;
         } else if (isContingency) {
-          if (portBActive || l.is_active_path) {
+          const isPrimarySevered = links.some(
+            (other) =>
+              (other.origin_id === 'node-port-a' || other.id === 'link-porta-warehouse') &&
+              (other.status === 'disabled' || !portAActive)
+          );
+          if (portBActive || l.is_active_path || l.status === 'active' || isPrimarySevered) {
             color = '#059669'; // Emerald active contingency
             weight = 5;
             opacity = 0.95;
+            dashArray = undefined;
           } else {
             color = '#d97706'; // Amber standby
             dashArray = '6, 6';
@@ -353,6 +359,12 @@ export const GeoRouteMap: React.FC<GeoRouteMapProps> = ({
       } else if (n.type === 'digital_service') {
         labelIcon = '⚡';
         borderColor = !portAActive ? '#e11d48' : '#9333ea';
+      }
+
+      if (n.status === 'disrupted' || n.status === 'compromised') {
+        borderColor = '#e11d48';
+      } else if (n.status === 'active_alternate') {
+        borderColor = '#059669';
       }
 
       const isSelected = selectedNodeId === n.id;
